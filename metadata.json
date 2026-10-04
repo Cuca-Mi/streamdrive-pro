@@ -1,0 +1,9 @@
+{
+  "name": "StreamDrive Pro - TV Stream & GPS Handsfree",
+  "description": "Plataforma inteligente de TV Stream com buffer anti-travamento estilo YouTube, player multi-formato, navegação GPS em tempo real, comandos de voz handsfree e integração Bluetooth veicular.",
+  "requestFramePermissions": [
+    "geolocation",
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

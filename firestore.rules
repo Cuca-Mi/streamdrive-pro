@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'cucamiguilito@gmail.com' &&
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation for UserProfile
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'email']) &&
+        data.keys().hasOnly(['userId', 'email', 'displayName', 'role', 'nightMode', 'highContrast', 'fontSize', 'voiceCommandsEnabled', 'voiceFeedbackEnabled', 'offlineFavoritesEnabled', 'bluetoothAutoconnect', 'createdAt', 'updatedAt']) &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.email is string && data.email.size() <= 256 &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+        (!('role' in data) || (data.role in ['admin', 'user'])) &&
+        (!('nightMode' in data) || (data.nightMode in ['auto', 'dark', 'light', 'car-night-drive'])) &&
+        (!('highContrast' in data) || data.highContrast is bool) &&
+        (!('fontSize' in data) || (data.fontSize in ['normal', 'large', 'extra-large'])) &&
+        (!('voiceCommandsEnabled' in data) || data.voiceCommandsEnabled is bool) &&
+        (!('voiceFeedbackEnabled' in data) || data.voiceFeedbackEnabled is bool) &&
+        (!('offlineFavoritesEnabled' in data) || data.offlineFavoritesEnabled is bool) &&
+        (!('bluetoothAutoconnect' in data) || data.bluetoothAutoconnect is bool);
+    }
+
+    // Validation for Channel
+    function isValidChannel(data) {
+      return data.keys().hasAll(['id', 'title', 'url', 'streamType', 'ownerId']) &&
+        data.keys().hasOnly(['id', 'title', 'url', 'streamType', 'category', 'logoUrl', 'resolution', 'bufferTargetSec', 'isCustom', 'ownerId', 'viewsCount', 'createdAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+        data.url is string && data.url.size() > 0 && data.url.size() <= 2048 &&
+        data.streamType in ['hls', 'mp4', 'webm', 'embed', 'xtream'] &&
+        data.ownerId is string && data.ownerId.size() <= 128 &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 2048)) &&
+        (!('resolution' in data) || (data.resolution is string && data.resolution.size() <= 30)) &&
+        (!('bufferTargetSec' in data) || data.bufferTargetSec is number) &&
+        (!('isCustom' in data) || data.isCustom is bool) &&
+        (!('viewsCount' in data) || data.viewsCount is number);
+    }
+
+    // Validation for Favorite
+    function isValidFavorite(data) {
+      return data.keys().hasAll(['id', 'userId', 'channelId', 'title', 'url']) &&
+        data.keys().hasOnly(['id', 'userId', 'channelId', 'title', 'url', 'category', 'logoUrl', 'savedOffline', 'createdAt']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.channelId is string && data.channelId.size() <= 128 &&
+        data.title is string && data.title.size() <= 200 &&
+        data.url is string && data.url.size() <= 2048 &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 100)) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 2048)) &&
+        (!('savedOffline' in data) || data.savedOffline is bool);
+    }
+
+    // Validation for Metric
+    function isValidMetric(data) {
+      return data.keys().hasAll(['id', 'userId', 'channelId', 'timestamp']) &&
+        data.keys().hasOnly(['id', 'userId', 'channelId', 'channelTitle', 'bufferLengthSec', 'bitrateKbps', 'droppedFrames', 'latencyMs', 'stallCount', 'gpsActive', 'timestamp']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() <= 128 &&
+        data.channelId is string && data.channelId.size() <= 128 &&
+        (!('channelTitle' in data) || (data.channelTitle is string && data.channelTitle.size() <= 200)) &&
+        (!('bufferLengthSec' in data) || data.bufferLengthSec is number) &&
+        (!('bitrateKbps' in data) || data.bitrateKbps is number) &&
+        (!('droppedFrames' in data) || data.droppedFrames is number) &&
+        (!('latencyMs' in data) || data.latencyMs is number) &&
+        (!('stallCount' in data) || data.stallCount is number) &&
+        (!('gpsActive' in data) || data.gpsActive is bool);
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUserProfile(incoming()) &&
+        (incoming().role == 'user' || (incoming().role == 'admin' && isAdmin()));
+      allow update: if isValidId(userId) && (isOwner(userId) || isAdmin()) && isValidUserProfile(incoming()) &&
+        incoming().userId == existing().userId &&
+        (isAdmin() || incoming().role == existing().role);
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+
+      // User favorites subcollection
+      match /favorites/{favoriteId} {
+        allow get, list: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isOwner(userId) && isValidId(favoriteId) &&
+          isValidFavorite(incoming()) && incoming().userId == userId;
+        allow update: if isValidId(userId) && isOwner(userId) && isValidId(favoriteId) &&
+          isValidFavorite(incoming()) && incoming().userId == userId && incoming().id == existing().id;
+        allow delete: if isValidId(userId) && isOwner(userId) && isValidId(favoriteId);
+      }
+    }
+
+    // Channels Collection
+    match /channels/{channelId} {
+      allow get, list: if isValidId(channelId);
+      allow create: if isValidId(channelId) && isSignedIn() && isValidChannel(incoming()) &&
+        (incoming().ownerId == request.auth.uid || isAdmin());
+      allow update: if isValidId(channelId) && isSignedIn() && isValidChannel(incoming()) &&
+        (existing().ownerId == request.auth.uid || isAdmin()) &&
+        incoming().id == existing().id;
+      allow delete: if isValidId(channelId) && isSignedIn() &&
+        (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Metrics Collection
+    match /metrics/{metricId} {
+      allow get: if isValidId(metricId) && (isAdmin() || (isSignedIn() && existing().userId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isValidId(metricId) && isSignedIn() && isValidMetric(incoming()) &&
+        incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Admin Reports Collection
+    match /adminReports/{reportId} {
+      allow read, write: if isValidId(reportId) && isAdmin();
+    }
+  }
+}

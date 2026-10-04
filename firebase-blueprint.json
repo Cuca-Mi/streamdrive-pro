@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with preference settings for display, audio, accessibility, and driving mode",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The unique Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User access role" },
+        "nightMode": { "type": "string", "enum": ["auto", "dark", "light", "car-night-drive"], "description": "Display theme preference" },
+        "highContrast": { "type": "boolean", "description": "Accessibility high contrast setting" },
+        "fontSize": { "type": "string", "enum": ["normal", "large", "extra-large"], "description": "Accessibility font scaling" },
+        "voiceCommandsEnabled": { "type": "boolean", "description": "Whether handsfree voice recognition is enabled" },
+        "voiceFeedbackEnabled": { "type": "boolean", "description": "Whether text-to-speech audio feedback is enabled" },
+        "offlineFavoritesEnabled": { "type": "boolean", "description": "Auto cache favorites for offline playback" },
+        "bluetoothAutoconnect": { "type": "boolean", "description": "Auto connect with car Bluetooth audio system" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of profile creation" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last profile update" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "TV Stream channel with support for Xtream, HLS (.m3u8), MP4, YouTube, and WebM",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Channel identifier" },
+        "title": { "type": "string", "description": "Channel title name" },
+        "url": { "type": "string", "description": "Stream URL (m3u8, mp4, embed, etc.)" },
+        "streamType": { "type": "string", "enum": ["hls", "mp4", "webm", "embed", "xtream"], "description": "Stream encoding format" },
+        "category": { "type": "string", "description": "Channel category: Notícias, Esportes, Filmes, Séries, Variedades" },
+        "logoUrl": { "type": "string", "description": "Logo or poster URL" },
+        "resolution": { "type": "string", "description": "Stream resolution tag (1080p, 720p, 4K, Auto)" },
+        "bufferTargetSec": { "type": "number", "description": "Anti-buffer target buffer ahead in seconds (default 15-30s like YouTube)" },
+        "isCustom": { "type": "boolean", "description": "True if added by user or custom Xtream panel" },
+        "ownerId": { "type": "string", "description": "User UID who added this channel" },
+        "viewsCount": { "type": "number", "description": "Total view count" },
+        "createdAt": { "type": "string", "description": "Timestamp of creation" }
+      },
+      "required": ["id", "title", "url", "streamType", "ownerId"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "User favorite channel bookmark with offline caching status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique favorite ID" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "channelId": { "type": "string", "description": "Referenced channel ID" },
+        "title": { "type": "string", "description": "Cached channel title" },
+        "url": { "type": "string", "description": "Cached channel stream URL" },
+        "category": { "type": "string", "description": "Channel category" },
+        "logoUrl": { "type": "string", "description": "Channel logo" },
+        "savedOffline": { "type": "boolean", "description": "Whether content metadata is cached for offline" },
+        "createdAt": { "type": "string", "description": "Timestamp when favorited" }
+      },
+      "required": ["id", "userId", "channelId", "title", "url"]
+    },
+    "Metric": {
+      "title": "Metric",
+      "description": "Real-time playback and system health telemetry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Metric record ID" },
+        "userId": { "type": "string", "description": "User UID or guest" },
+        "channelId": { "type": "string", "description": "Watched channel ID" },
+        "channelTitle": { "type": "string", "description": "Watched channel title" },
+        "bufferLengthSec": { "type": "number", "description": "Buffer ahead in seconds" },
+        "bitrateKbps": { "type": "number", "description": "Current playback bitrate in kbps" },
+        "droppedFrames": { "type": "number", "description": "Number of dropped video frames" },
+        "latencyMs": { "type": "number", "description": "Estimated live stream latency" },
+        "stallCount": { "type": "number", "description": "Buffer stall/freeze count" },
+        "gpsActive": { "type": "boolean", "description": "Whether vehicle GPS was active" },
+        "timestamp": { "type": "string", "description": "Timestamp of event" }
+      },
+      "required": ["id", "userId", "channelId", "timestamp"]
+    },
+    "AdminReport": {
+      "title": "AdminReport",
+      "description": "Aggregated administrative performance audit report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Report ID" },
+        "generatedBy": { "type": "string", "description": "Admin UID or email" },
+        "totalPlays": { "type": "number", "description": "Total play sessions" },
+        "avgBufferSec": { "type": "number", "description": "Average buffer health in seconds" },
+        "uptimePercent": { "type": "number", "description": "Overall stream uptime percentage" },
+        "totalStalls": { "type": "number", "description": "Recorded buffer freeze events" },
+        "activeUsers": { "type": "number", "description": "Active users count" },
+        "generatedAt": { "type": "string", "description": "Timestamp of report generation" }
+      },
+      "required": ["id", "generatedBy", "generatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "User profiles and customized preferences"
+    },
+    "/channels/{channelId}": {
+      "schema": { "$ref": "Channel" },
+      "description": "Global and user-added streaming channels"
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": { "$ref": "Favorite" },
+      "description": "Per-user favorited and offline-cached channels"
+    },
+    "/metrics/{metricId}": {
+      "schema": { "$ref": "Metric" },
+      "description": "Real-time playback and buffer telemetry"
+    },
+    "/adminReports/{reportId}": {
+      "schema": { "$ref": "AdminReport" },
+      "description": "Aggregated administrative performance reports"
+    }
+  }
+}

@@ -5,6 +5,9 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Caminhos relativos: obrigatório no GitHub Pages, onde o site é servido
+    // em /streamdrive-pro/ e não na raiz do domínio.
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
